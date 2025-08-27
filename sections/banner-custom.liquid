@@ -1,0 +1,40 @@
+{% comment %} Custom Banner (no Dawn components) {% endcomment %}
+<section class="banner-custom">
+  <div class="banner-custom__inner">
+    <h1 class="banner-custom__title">{{ section.settings.heading }}</h1>
+    <p class="banner-custom__subtitle">{{ section.settings.subheading }}</p>
+    <div class="banner-custom__cta-wrap">
+      <a href="{{ section.settings.primary_url }}" class="btn-anim">{{ section.settings.primary_label }}</a>
+      <a href="{{ section.settings.secondary_url }}" class="btn-anim btn-anim--ghost">{{ section.settings.secondary_label }}</a>
+    </div>
+  </div>
+
+  <style>
+    .banner-custom{padding:clamp(48px,6vw,96px) 5vw;display:grid;place-items:center;text-align:center;background:{{ section.settings.bg_color }};}
+    .banner-custom__title{font-size:clamp(28px,5vw,56px);line-height:1.1;margin:0 0 12px;color:{{ section.settings.heading_color }};}
+    .banner-custom__subtitle{font-size:clamp(14px,2.2vw,18px);opacity:.85;margin:0 0 24px;color:{{ section.settings.text_color }};}
+    .banner-custom__cta-wrap{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    .btn-anim{padding:12px 20px;border-radius:999px;border:1px solid currentColor;text-decoration:none;display:inline-block;transition:transform .15s ease, box-shadow .2s ease}
+    .btn-anim:active{transform:scale(.98)}
+    .btn-anim:hover{box-shadow:0 10px 24px rgba(0,0,0,.12)}
+    .btn-anim--ghost{background:transparent}
+  </style>
+</section>
+
+{% schema %}
+{
+  "name": "Custom Banner (Test)",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Your Banner Title" },
+    { "type": "text", "id": "subheading", "label": "Subtitle", "default": "A short supporting line." },
+    { "type": "text", "id": "primary_label", "label": "Primary button label", "default": "Shop now" },
+    { "type": "url",  "id": "primary_url",   "label": "Primary button link" },
+    { "type": "text", "id": "secondary_label", "label": "Secondary button label", "default": "Learn more" },
+    { "type": "url",  "id": "secondary_url",   "label": "Secondary button link" },
+    { "type": "color","id": "bg_color", "label": "Background", "default": "#ffffff" },
+    { "type": "color","id": "heading_color", "label": "Heading color", "default": "#111111" },
+    { "type": "color","id": "text_color", "label": "Text color", "default": "#333333" }
+  ],
+  "presets": [{ "name": "Custom Banner (Test)" }]
+}
+{% endschema %}
