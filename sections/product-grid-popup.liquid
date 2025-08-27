@@ -1,0 +1,211 @@
+{% comment %} Product Grid + Popup (vanilla JS, no Dawn components) {% endcomment %}
+<section class="pgp">
+  <div class="pgp__grid">
+    {%- for block in section.blocks -%}
+      {%- assign p = block.settings.product -%}
+      {%- if p != blank -%}
+        {%- assign product = all_products[p] -%}
+        <article class="pgp__card" data-handle="{{ product.handle | escape }}">
+          <div class="pgp__thumb">
+            {%- if product.featured_image -%}
+              <img src="{{ product.featured_image | img_url: '540x' }}" alt="{{ product.title | escape }}">
+            {%- endif -%}
+            <button class="pgp__dot" aria-label="Quick view" data-open-popup data-handle="{{ product.handle | escape }}"></button>
+          </div>
+          <h3 class="pgp__title">{{ product.title }}</h3>
+          <p class="pgp__price">
+            {%- if product.price_varies -%}
+              From {{ product.price_min | money }}
+            {%- else -%}
+              {{ product.price | money }}
+            {%- endif -%}
+          </p>
+          <script type="application/json" class="pgp__product-json">
+            {{ product | json }}
+          </script>
+        </article>
+      {%- endif -%}
+    {%- endfor -%}
+  </div>
+
+  <!-- Popup -->
+  <dialog class="pgp__popup" id="pgpPopup">
+    <button class="pgp__close" data-close-popup>&times;</button>
+    <div class="pgp__popup-body">
+      <div class="pgp__popup-media"><img id="pgpImg" alt=""></div>
+      <div class="pgp__popup-info">
+        <h3 id="pgpTitle"></h3>
+        <p id="pgpPrice" class="pgp__popup-price"></p>
+        <div id="pgpOptions" class="pgp__options"></div>
+        <p id="pgpDesc" class="pgp__desc"></p>
+        <div class="pgp__qty">
+          <label>Qty</label>
+          <input type="number" id="pgpQty" min="1" value="1">
+        </div>
+        <button id="pgpAdd" class="btn-anim">ADD TO CART</button>
+        <p id="pgpError" class="pgp__error" hidden></p>
+      </div>
+    </div>
+  </dialog>
+
+  <style>
+    .pgp{padding:40px 5vw}
+    .pgp__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+    @media(max-width:900px){.pgp__grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:600px){.pgp__grid{grid-template-columns:1fr}}
+    .pgp__thumb{position:relative;border-radius:16px;overflow:hidden;background:#f6f6f6;aspect-ratio:1/1;display:grid;place-items:center}
+    .pgp__thumb img{width:100%;height:100%;object-fit:cover}
+    .pgp__dot{position:absolute;right:10px;bottom:10px;width:36px;height:36px;border-radius:999px;border:none;cursor:pointer;background:#1111;backdrop-filter:blur(6px)}
+    .pgp__title{margin:10px 0 4px;font-weight:600}
+    .pgp__price{opacity:.85;margin:0 0 6px}
+    .pgp__popup{border:none;border-radius:20px;max-width:min(900px,92vw);padding:0}
+    .pgp__popup::backdrop{background:rgba(0,0,0,.4)}
+    .pgp__popup-body{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;padding:20px}
+    @media(max-width:800px){.pgp__popup-body{grid-template-columns:1fr}}
+    .pgp__close{position:absolute;top:8px;right:12px;font-size:28px;border:none;background:transparent;cursor:pointer}
+    .pgp__popup-media{background:#f6f6f6;border-radius:16px;overflow:hidden}
+    .pgp__popup-media img{width:100%;height:100%;object-fit:cover}
+    .pgp__options{display:grid;gap:12px;margin:12px 0}
+    .pgp__options .opt{display:grid;gap:6px}
+    .pgp__qty{margin:10px 0;display:flex;align-items:center;gap:10px}
+    .pgp__desc{opacity:.9}
+    .pgp__error{color:#c00;margin-top:8px}
+  </style>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const popup = document.getElementById('pgpPopup');
+    const titleEl = document.getElementById('pgpTitle');
+    const priceEl = document.getElementById('pgpPrice');
+    const imgEl = document.getElementById('pgpImg');
+    const descEl = document.getElementById('pgpDesc');
+    const optsEl = document.getElementById('pgpOptions');
+    const qtyEl = document.getElementById('pgpQty');
+    const addBtn = document.getElementById('pgpAdd');
+    const errEl = document.getElementById('pgpError');
+
+    const AUTO_ADD_HANDLE = {{ section.settings.auto_add_product | json }}; // "soft-winter-jacket" (configurable)
+    let currentProduct = null;
+    let selectedOptions = [];
+
+    function money(cents){ return new Intl.NumberFormat(undefined,{style:'currency',currency:{{ shop.currency | json }}}).format(cents/100); }
+
+    function openPopupWith(handle){
+      // Prefer embedded JSON to avoid extra network requests
+      const card = document.querySelector('.pgp__card[data-handle="'+handle+'"]');
+      const json = card?.querySelector('.pgp__product-json')?.textContent;
+      currentProduct = json ? JSON.parse(json) : null;
+
+      if(!currentProduct){return;}
+      titleEl.textContent = currentProduct.title;
+      descEl.textContent = (currentProduct.description || '').replace(/<[^>]+>/g,'').slice(0,400);
+      imgEl.src = currentProduct.featured_image ? currentProduct.featured_image.src : '';
+      qtyEl.value = 1; errEl.hidden = true;
+
+      // Build option selectors
+      optsEl.innerHTML = '';
+      selectedOptions = [];
+      (currentProduct.options || []).forEach((opt, idx) => {
+        const wrap = document.createElement('div'); wrap.className = 'opt';
+        const label = document.createElement('label'); label.textContent = opt.name;
+        const select = document.createElement('select'); select.dataset.index = idx;
+        opt.values.forEach(v => {
+          const o = document.createElement('option'); o.value = v; o.textContent = v; select.appendChild(o);
+        });
+        select.addEventListener('change', syncPriceAndSelect);
+        wrap.append(label, select); optsEl.appendChild(wrap);
+        selectedOptions[idx] = opt.values[0];
+      });
+      syncPriceAndSelect();
+      if (typeof popup.showModal === 'function') popup.showModal(); else popup.setAttribute('open','');
+    }
+
+    function syncPriceAndSelect(){
+      const selects = optsEl.querySelectorAll('select');
+      selectedOptions = Array.from(selects).map(s => s.value);
+      const match = (currentProduct.variants || []).find(v => {
+        // v.options in Shopify JS object aligns to selectedOptions order
+        return JSON.stringify(v.options) === JSON.stringify(selectedOptions) && v.available;
+      }) || (currentProduct.variants || [])[0];
+
+      priceEl.textContent = match ? money(match.price) : money(currentProduct.price || 0);
+      addBtn.dataset.variantId = match ? match.id : '';
+    }
+
+    async function addToCart(variantId, qty){
+      const res = await fetch('/cart/add.js',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify({ id: variantId, quantity: qty })
+      });
+      if(!res.ok){ throw new Error((await res.json()).description || 'Add failed'); }
+      return res.json();
+    }
+
+    async function maybeAutoAddJacket(){
+      // If selected options include both "Black" and "Medium", auto-add the configured product
+      if (!AUTO_ADD_HANDLE) return;
+      const hasBlack = selectedOptions.some(v => (v||'').toLowerCase() === 'black');
+      const hasMedium = selectedOptions.some(v => (v||'').toLowerCase() === 'medium');
+      if (!(hasBlack && hasMedium)) return;
+
+      // Get first available variant of the auto-add product
+      const res = await fetch(`/products/${AUTO_ADD_HANDLE}.js`,{headers:{'Accept':'application/json'}});
+      if(!res.ok) return;
+      const prod = await res.json();
+      const v = (prod.variants || []).find(x => x.available) || prod.variants?.[0];
+      if(!v) return;
+      try { await addToCart(v.id, 1); } catch(e){}
+    }
+
+    document.querySelectorAll('[data-open-popup]').forEach(btn=>{
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        openPopupWith(btn.dataset.handle);
+      });
+    });
+
+    document.querySelector('[data-close-popup]')?.addEventListener('click', () => {
+      if (typeof popup.close === 'function') popup.close(); else popup.removeAttribute('open');
+    });
+
+    addBtn.addEventListener('click', async () => {
+      errEl.hidden = true;
+      const variantId = addBtn.dataset.variantId;
+      const qty = Math.max(1, parseInt(qtyEl.value || '1',10));
+      if(!variantId){ errEl.textContent = 'Please select available options.'; errEl.hidden = false; return; }
+      try{
+        await addToCart(variantId, qty);
+        await maybeAutoAddJacket();
+        // Optional: mini confirmation
+        addBtn.textContent = 'Added!';
+        setTimeout(()=> addBtn.textContent = 'ADD TO CART', 1000);
+      }catch(e){
+        errEl.textContent = e.message || 'Could not add to cart';
+        errEl.hidden = false;
+      }
+    });
+  });
+  </script>
+</section>
+
+{% schema %}
+{
+  "name": "Product Grid + Popup (Test)",
+  "settings": [
+    { "type": "product", "id": "auto_add_product", "label": "Auto-add product (Soft Winter Jacket)", "info": "Will be added when a product with options Black & Medium is added." }
+  ],
+  "blocks": [
+    {
+      "type": "item",
+      "name": "Product",
+      "limit": 6,
+      "settings": [
+        { "type": "product", "id": "product", "label": "Select product" }
+      ]
+    }
+  ],
+  "max_blocks": 6,
+  "presets": [{ "name": "Product Grid + Popup (Test)" }]
+}
+{% endschema %}
