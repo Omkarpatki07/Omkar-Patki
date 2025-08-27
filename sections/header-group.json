@@ -117,10 +117,26 @@
         "enable_transparent_header_collection": false,
         "collection_color_scheme": "default"
       }
+    },
+    "banner_custom_bfTmdf": {
+      "type": "banner-custom",
+      "name": "Custom Banner (Test)",
+      "settings": {
+        "heading": "Shop Our Featured Styles",
+        "subheading": "From bold leather to classic tuxedos, find the perfect fit for every occasion.",
+        "primary_label": "Shop Collection",
+        "primary_url": "shopify://products/striped-silk-blouse",
+        "secondary_label": "Explore More",
+        "secondary_url": "shopify://collections/all",
+        "bg_color": "#f8f8f8",
+        "heading_color": "#111111",
+        "text_color": "#555555"
+      }
     }
   },
   "order": [
     "header_announcements_9jGBFp",
-    "header_section"
+    "header_section",
+    "banner_custom_bfTmdf"
   ]
 }
