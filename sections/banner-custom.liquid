@@ -1,40 +1,73 @@
-{% comment %} Custom Banner (no Dawn components) {% endcomment %}
-<section class="banner-custom">
-  <div class="banner-custom__inner">
-    <h1 class="banner-custom__title">{{ section.settings.heading }}</h1>
-    <p class="banner-custom__subtitle">{{ section.settings.subheading }}</p>
-    <div class="banner-custom__cta-wrap">
-      <a href="{{ section.settings.primary_url }}" class="btn-anim">{{ section.settings.primary_label }}</a>
-      <a href="{{ section.settings.secondary_url }}" class="btn-anim btn-anim--ghost">{{ section.settings.secondary_label }}</a>
+{% comment %}
+  Custom Banner — editable texts + animated buttons (no Dawn components)
+{% endcomment %}
+
+<section class="figma-banner">
+  <div class="figma-banner__inner">
+    {% if section.settings.eyebrow != blank %}
+      <p class="figma-banner__eyebrow">{{ section.settings.eyebrow }}</p>
+    {% endif %}
+
+    {% if section.settings.title != blank %}
+      <h1 class="figma-banner__title">{{ section.settings.title }}</h1>
+    {% endif %}
+
+    {% if section.settings.subtitle != blank %}
+      <p class="figma-banner__subtitle">{{ section.settings.subtitle }}</p>
+    {% endif %}
+
+    <div class="figma-banner__ctas">
+      {% if section.settings.cta_primary_label != blank %}
+        <a
+          class="btn btn--primary {% if section.settings.animate_buttons %}btn-animate{% endif %}"
+          href="{{ section.settings.cta_primary_link | default: '#' }}"
+        >
+          {{ section.settings.cta_primary_label }}
+        </a>
+      {% endif %}
+      {% if section.settings.cta_secondary_label != blank %}
+        <a
+          class="btn btn--secondary {% if section.settings.animate_buttons %}btn-animate{% endif %}"
+          href="{{ section.settings.cta_secondary_link | default: '#' }}"
+        >
+          {{ section.settings.cta_secondary_label }}
+        </a>
+      {% endif %}
     </div>
   </div>
-
-  <style>
-    .banner-custom{padding:clamp(48px,6vw,96px) 5vw;display:grid;place-items:center;text-align:center;background:{{ section.settings.bg_color }};}
-    .banner-custom__title{font-size:clamp(28px,5vw,56px);line-height:1.1;margin:0 0 12px;color:{{ section.settings.heading_color }};}
-    .banner-custom__subtitle{font-size:clamp(14px,2.2vw,18px);opacity:.85;margin:0 0 24px;color:{{ section.settings.text_color }};}
-    .banner-custom__cta-wrap{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-    .btn-anim{padding:12px 20px;border-radius:999px;border:1px solid currentColor;text-decoration:none;display:inline-block;transition:transform .15s ease, box-shadow .2s ease}
-    .btn-anim:active{transform:scale(.98)}
-    .btn-anim:hover{box-shadow:0 10px 24px rgba(0,0,0,.12)}
-    .btn-anim--ghost{background:transparent}
-  </style>
 </section>
+
+<style>
+  .figma-banner{padding:clamp(40px,6vw,100px) 20px;text-align:center}
+  .figma-banner__eyebrow{letter-spacing:.1em;text-transform:uppercase;margin:0 0 8px}
+  .figma-banner__title{font-size:clamp(28px,5vw,56px);line-height:1.05;margin:.2em 0}
+  .figma-banner__subtitle{max-width:720px;margin:12px auto 24px;opacity:.85}
+  .figma-banner__ctas{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;padding:12px 20px;border-radius:999px;border:1px solid currentColor;text-decoration:none}
+  .btn--primary{background:var(--color-primary, #111);color:#fff}
+  .btn--secondary{background:transparent;color:var(--color-primary, #111)}
+  /* simple micro-animation */
+  .btn-animate{position:relative;transition:transform .15s ease}
+  .btn-animate:hover{transform:translateY(-2px)}
+  .btn-animate:active{transform:translateY(0)}
+</style>
 
 {% schema %}
 {
-  "name": "Custom Banner (Test)",
+  "name": "Custom Banner",
   "settings": [
-    { "type": "text", "id": "heading", "label": "Heading", "default": "Your Banner Title" },
-    { "type": "text", "id": "subheading", "label": "Subtitle", "default": "A short supporting line." },
-    { "type": "text", "id": "primary_label", "label": "Primary button label", "default": "Shop now" },
-    { "type": "url",  "id": "primary_url",   "label": "Primary button link" },
-    { "type": "text", "id": "secondary_label", "label": "Secondary button label", "default": "Learn more" },
-    { "type": "url",  "id": "secondary_url",   "label": "Secondary button link" },
-    { "type": "color","id": "bg_color", "label": "Background", "default": "#ffffff" },
-    { "type": "color","id": "heading_color", "label": "Heading color", "default": "#111111" },
-    { "type": "color","id": "text_color", "label": "Text color", "default": "#333333" }
+    { "type": "text", "id": "eyebrow", "label": "Eyebrow" },
+    { "type": "text", "id": "title", "label": "Title" },
+    { "type": "textarea", "id": "subtitle", "label": "Subtitle" },
+
+    { "type": "text", "id": "cta_primary_label", "label": "Primary button label" },
+    { "type": "url",  "id": "cta_primary_link",  "label": "Primary button link" },
+
+    { "type": "text", "id": "cta_secondary_label", "label": "Secondary button label" },
+    { "type": "url",  "id": "cta_secondary_link",  "label": "Secondary button link" },
+
+    { "type": "checkbox", "id": "animate_buttons", "label": "Animate buttons", "default": true }
   ],
-  "presets": [{ "name": "Custom Banner (Test)" }]
+  "presets": [{ "name": "Custom Banner" }]
 }
 {% endschema %}
