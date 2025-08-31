@@ -1,0 +1,289 @@
+{% comment %}
+  Product grid with 6 selectable products + modal popup.
+  Vanilla JS only. Uses /products/{handle}.js for product JSON and /cart/add.js for cart.
+{% endcomment %}
+
+<section class="figma-grid" data-soft-jacket-handle="{{ section.settings.soft_jacket_handle | escape }}">
+  <div class="figma-grid__wrap">
+    {% for block in section.blocks %}
+      {% assign prod = block.settings.product %}
+      {% if prod %}
+        <article class="figma-card" {{ block.shopify_attributes }}>
+          <a class="figma-card__image" href="{{ prod.url }}">
+            {%- if prod.featured_image -%}
+              <img loading="lazy" src="{{ prod.featured_image | image_url: width: 600 }}" alt="{{ prod.title | escape }}">
+            {%- endif -%}
+          </a>
+          <div class="figma-card__meta">
+            <h3 class="figma-card__title">{{ prod.title }}</h3>
+            <p class="figma-card__price">
+              {{ prod.selected_or_first_available_variant.price | money }}
+            </p>
+          </div>
+          <!-- the little circle trigger -->
+          <button
+            type="button"
+            class="figma-card__dot"
+            aria-label="Quick view {{ prod.title }}"
+            data-product-handle="{{ prod.handle }}"
+          ></button>
+        </article>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <!-- Modal -->
+  <div class="figma-modal" hidden>
+    <div class="figma-modal__backdrop" data-modal-close></div>
+    <div class="figma-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <button class="figma-modal__close" type="button" aria-label="Close" data-modal-close>&times;</button>
+
+      <div class="figma-modal__content">
+        <div class="modal__media"><img alt="" class="modal__image"></div>
+        <div class="modal__info">
+          <h2 id="modalTitle" class="modal__title"></h2>
+          <p class="modal__price"></p>
+          <div class="modal__desc"></div>
+
+          <form class="modal__form">
+            <!-- variant options inject here -->
+            <div class="modal__options"></div>
+
+            <div class="modal__actions">
+              <button class="btn btn--primary" type="submit">Add to cart</button>
+            </div>
+          </form>
+
+          <p class="modal__status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .figma-grid{padding:40px 16px}
+  .figma-grid__wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  @media (max-width: 900px){.figma-grid__wrap{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width: 540px){.figma-grid__wrap{grid-template-columns:1fr}}
+
+  .figma-card{position:relative;background:#fff;border:1px solid #eee;border-radius:16px;overflow:hidden}
+  .figma-card__image img{display:block;width:100%;height:auto}
+  .figma-card__meta{padding:12px}
+  .figma-card__title{margin:0 0 6px;font-size:16px}
+  .figma-card__price{margin:0;opacity:.9}
+
+  /* little circle */
+  .figma-card__dot{
+    position:absolute;right:12px;top:12px;width:24px;height:24px;border-radius:50%;
+    border:none;cursor:pointer;background:#111;color:#fff;display:grid;place-items:center
+  }
+  .figma-card__dot::before{content:"";width:6px;height:6px;border-radius:50%;background:#fff}
+
+  /* modal */
+  .figma-modal{position:fixed;inset:0;z-index:9999}
+  .figma-modal[hidden]{display:none}
+  .figma-modal__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+  .figma-modal__dialog{
+    position:relative;max-width:980px;margin:6vh auto;background:#fff;border-radius:16px;overflow:hidden
+  }
+  .figma-modal__close{position:absolute;right:10px;top:10px;border:none;background:transparent;font-size:28px;cursor:pointer}
+  .figma-modal__content{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;padding:20px}
+  .modal__media img{display:block;width:100%;height:auto;border-radius:12px}
+  .modal__title{margin:.2em 0}
+  .modal__price{margin:.2em 0 1em;font-weight:600}
+  .modal__desc{opacity:.9;margin-bottom:12px;max-height:160px;overflow:auto}
+  .modal__options{display:grid;gap:12px;margin:12px 0}
+  .modal__actions .btn{width:100%}
+  @media (max-width: 860px){
+    .figma-modal__content{grid-template-columns:1fr}
+  }
+</style>
+
+<script>
+  (function(){
+    const grid = document.currentScript.closest('.figma-grid');
+    const modal = grid.querySelector('.figma-modal');
+    const closeEls = modal.querySelectorAll('[data-modal-close]');
+    const titleEl = modal.querySelector('.modal__title');
+    const priceEl = modal.querySelector('.modal__price');
+    const descEl  = modal.querySelector('.modal__desc');
+    const imgEl   = modal.querySelector('.modal__image');
+    const optsEl  = modal.querySelector('.modal__options');
+    const form    = modal.querySelector('.modal__form');
+    const status  = modal.querySelector('.modal__status');
+
+    let currentProduct = null;      // product JSON from /products/{handle}.js
+    let selectedVariant = null;     // chosen variant object
+    let jacketVariantId = null;     // Soft Winter Jacket default variant id (prefetched)
+
+    // Prefetch Soft Winter Jacket default variant (by handle from section setting)
+    const jacketHandle = grid.dataset.softJacketHandle;
+    if (jacketHandle) {
+      fetch(`/products/${jacketHandle}.js`)
+        .then(r => r.ok ? r.json() : null)
+        .then(p => { if (p && p.variants && p.variants.length) jacketVariantId = p.variants[0].id; })
+        .catch(()=>{});
+    }
+
+    // Open modal handler
+    grid.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.figma-card__dot');
+      if (!btn) return;
+
+      const handle = btn.getAttribute('data-product-handle');
+      if (!handle) return;
+
+      status.textContent = '';
+      optsEl.innerHTML = '';
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
+
+      try {
+        const res = await fetch(`/products/${handle}.js`, { credentials: 'same-origin' });
+        currentProduct = await res.json();
+
+        // Populate basics
+        titleEl.textContent = currentProduct.title;
+        priceEl.textContent = formatMoney(currentProduct.price);
+        descEl.innerHTML = currentProduct.description || '';
+        if (currentProduct.images && currentProduct.images.length) {
+          imgEl.src = currentProduct.images[0];
+          imgEl.alt = currentProduct.title;
+        } else {
+          imgEl.removeAttribute('src');
+          imgEl.alt = '';
+        }
+
+        // Build option selectors
+        buildOptions(currentProduct);
+
+        // Set initial variant
+        selectedVariant = findMatchingVariant(currentProduct, getSelectedOptions());
+        updatePrice();
+
+      } catch(err){
+        status.textContent = 'Failed to load product.';
+      }
+    });
+
+    // Close modal
+    closeEls.forEach(el => el.addEventListener('click', closeModal));
+    function closeModal(){
+      modal.hidden = true;
+      document.body.style.overflow = '';
+      currentProduct = null;
+      selectedVariant = null;
+      optsEl.innerHTML = '';
+      status.textContent = '';
+    }
+    document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+    // Build option dropdowns (no jQuery)
+    function buildOptions(product){
+      product.options.forEach((opt, i) => {
+        const wrap = document.createElement('div');
+        const id = `opt-${i}`;
+        wrap.innerHTML = `
+          <label for="${id}" class="modal__label">${opt.name}</label>
+          <select id="${id}" class="modal__select" data-index="${i}">
+            ${Array.from(new Set(product.variants.map(v => v.options[i]))).map(v => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join('')}
+          </select>
+        `;
+        optsEl.appendChild(wrap);
+      });
+
+      optsEl.addEventListener('change', () => {
+        selectedVariant = findMatchingVariant(currentProduct, getSelectedOptions());
+        updatePrice();
+      }, { once: true }); // attach once, we'll handle changes via event delegation below
+
+      optsEl.addEventListener('change', () => {
+        selectedVariant = findMatchingVariant(currentProduct, getSelectedOptions());
+        updatePrice();
+      });
+    }
+
+    function getSelectedOptions(){
+      return Array.from(optsEl.querySelectorAll('.modal__select')).map(s => s.value);
+    }
+
+    function findMatchingVariant(product, selected){
+      return product.variants.find(v => v.options.every((val, idx) => val === selected[idx])) || product.variants[0];
+    }
+
+    function updatePrice(){
+      const cents = selectedVariant ? selectedVariant.price : currentProduct.price;
+      priceEl.textContent = formatMoney(cents);
+    }
+
+    function formatMoney(cents){
+      // Basic formatter; Shopify’s {{ money }} is server-side. Adjust currency as needed.
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: '{{ shop.currency }}' }).format(cents/100);
+    }
+
+    function escapeHtml(str){
+      return (str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    // Add to cart + bonus jacket rule
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!selectedVariant) {
+        status.textContent = 'Please select options.';
+        return;
+      }
+
+      const selectedValues = getSelectedOptions().map(v => (v || '').toLowerCase());
+      const shouldAddJacket = selectedValues.includes('black') && selectedValues.includes('medium') && jacketVariantId;
+
+      try {
+        // If we already know the jacket variant, combine into one request
+        const items = [{ id: selectedVariant.id, quantity: 1 }];
+        if (shouldAddJacket) items.push({ id: Number(jacketVariantId), quantity: 1 });
+
+        const res = await fetch('/cart/add.js', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ items })
+        });
+
+        if (!res.ok) throw new Error('Add to cart failed');
+
+        status.textContent = shouldAddJacket
+          ? 'Added to cart (bonus jacket included).'
+          : 'Added to cart.';
+        // Optional: redirect to cart or show drawer if your theme has one
+        // window.location.href = '/cart';
+
+      } catch(err){
+        status.textContent = 'Could not add to cart. Try again.';
+      }
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Grid with Modal (6 products)",
+  "settings": [
+    {
+      "type": "text",
+      "id": "soft_jacket_handle",
+      "label": "Soft Winter Jacket product handle",
+      "info": "Used to auto-add when a product is added with options Black + Medium."
+    }
+  ],
+  "blocks": [
+    {
+      "type": "product",
+      "name": "Product",
+      "settings": [
+        { "type": "product", "id": "product", "label": "Select product" }
+      ]
+    }
+  ],
+  "max_blocks": 6,
+  "presets": [{ "name": "Grid with Modal (6)" }]
+}
+{% endschema %}

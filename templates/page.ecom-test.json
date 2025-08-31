@@ -1,8 +1,0 @@
-{
-    "sections": {
-      "banner": { "type": "banner-custom", "settings": {} },
-      "grid": { "type": "product-grid-popup", "settings": {} }
-    },
-    "order": ["banner", "grid"]
-  }
-  
