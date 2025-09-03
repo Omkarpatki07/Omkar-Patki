@@ -122,15 +122,14 @@
       "type": "banner-custom",
       "name": "Custom Banner (Test)",
       "settings": {
-        "heading": "Shop Our Featured Styles",
-        "subheading": "From bold leather to classic tuxedos, find the perfect fit for every occasion.",
-        "primary_label": "Shop Collection",
-        "primary_url": "shopify://products/striped-silk-blouse",
-        "secondary_label": "Explore More",
-        "secondary_url": "shopify://collections/all",
-        "bg_color": "#f8f8f8",
-        "heading_color": "#111111",
-        "text_color": "#555555"
+        "eyebrow": "",
+        "title": "Shop Our Featured Styles",
+        "subtitle": "From bold leather to classic tuxedos, find the perfect fit for every occasion.",
+        "cta_primary_label": "Shop now",
+        "cta_primary_link": "shopify://products/striped-silk-blouse",
+        "cta_secondary_label": "Learn more",
+        "cta_secondary_link": "",
+        "animate_buttons": true
       }
     }
   },
