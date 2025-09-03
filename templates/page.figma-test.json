@@ -2,8 +2,8 @@
     "name": "Figma Test Page",
     "sections": {
       "banner-custom": { "type": "banner-custom" },
-      "grid-with-modal": { "type": "grid-with-modal" }
+      "grid-modal": { "type": "grid-modal" }
     },
-    "order": ["banner-custom", "grid-with-modal"]
+    "order": ["banner-custom", "grid-modal"]
   }
   
